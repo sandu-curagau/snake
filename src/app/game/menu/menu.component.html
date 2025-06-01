@@ -1,0 +1,53 @@
+<div class="menu-container">
+    <h1>SNAKE 🐍</h1>
+
+    <button [routerLink]="['/play']">PLAY</button>
+
+    <div class="buttons-container">
+        <button
+            *ngFor="let diff of gameManager.difficulties"
+            [class.selected]="gameManager.getDifficulty() === diff"
+            (click)="gameManager.setDifficulty(diff)"
+        >
+            {{ diff }}
+        </button>
+    </div>
+
+    <div class="feature-container">
+        <h2>Mode</h2>
+        <p class="instructions">
+            Choose between playing solo or against enemy AI snake(s).
+        </p>
+        <div class="buttons-container">
+            <button
+                *ngFor="let mode of gameManager.modes"
+                [class.selected]="gameManager.mode$.value === mode"
+                (click)="gameManager.setMode(mode)"
+            >
+            {{ mode }}
+            </button>
+        </div>
+
+        <div *ngIf="(gameManager.mode$ | async) === gameManager.Mode.PvE" class="feature-container">
+            <h3>Number of Enemy Snakes</h3>
+            <div class="buttons-container">
+                <button
+                    *ngFor="let n of gameManager.getMaxEnemyCount()"
+                    [class.selected]="(gameManager.enemyCount$ | async) === n"
+                    (click)="gameManager.setEnemyCount(n)"
+                    >
+                    {{ n }}
+                </button>
+            </div>
+            <p class="instructions">
+                More enemies mean a bigger map.
+            </p>
+        </div>
+
+    </div>
+
+    <div class="instructions">
+        <p>Use arrow keys or WASD to control the snake.</p>
+        <p>Eat apples, grow longer, and avoid the walls and yourself!</p>
+    </div>
+</div>
