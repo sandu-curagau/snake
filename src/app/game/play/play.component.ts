@@ -1,7 +1,7 @@
 import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { GameManagerService } from '../shared/game-manager.service';
-import { Direction, Point, ScoreEntry } from '../shared/game.types';
+import { AISnake, Direction, Point, ScoreEntry } from '../shared/game.types';
 
 @Component({
   selector: 'app-play',
@@ -30,9 +30,7 @@ export class PlayComponent implements OnInit {
   private intervalId: any;
   startTime: any;
 
-  // Later, to support PvE
-  enemies: Point[][] = []; // Each enemy is a snake (array of points)
-  enemyDirections: Direction[] = [];
+  private enemySnakes: AISnake[] = [];
 
   constructor(public gameManager: GameManagerService, private router: Router) {
     console.log('difficulty ', gameManager.getDifficulty());
@@ -57,8 +55,8 @@ export class PlayComponent implements OnInit {
       this.cols = 20;
       this.rows = 15;
     } else {
-      this.cols = 40;
-      this.rows = 30;
+      this.cols = 20 + (3 * this.gameManager.getEnemyCount());
+      this.rows = 15 + (1 * this.gameManager.getEnemyCount());
     }
   }
 
@@ -67,8 +65,34 @@ export class PlayComponent implements OnInit {
     canvas.height = this.rows * this.tileSize;
   }
 
+  setupEnemySnakes() {
+    if (this.gameManager.getMode() === this.gameManager.Mode.PvE) {
+      for (let i = 0; i < this.gameManager.getEnemyCount(); i++) {
+        let spawnPos;
+        do {
+          spawnPos = {
+            x: Math.floor(Math.random() * this.cols),
+            y: Math.floor(Math.random() * this.rows),
+          };
+        } while (this.distance(spawnPos, this.snake[0]) < 8); // 8 tiles min distance
+
+        const aiSnake: AISnake = {
+          body: [spawnPos],
+          direction: Direction.Left,
+          color: 'orange',
+        };
+        this.enemySnakes.push(aiSnake);
+      }
+    }
+  }
+
+  distance(a: {x: number, y: number}, b: {x: number, y: number}): number {
+    return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+  }
+
   startGame() {
     this.initGame();
+    this.setupEnemySnakes();
     this.drawOverlayScreen('Press SPACE to start');
 
     const listener = (e: KeyboardEvent) => {
@@ -131,11 +155,12 @@ export class PlayComponent implements OnInit {
       case Direction.Right: head.x++; break;
     }
 
-    // Wall or self-collision
+    // Wall or self-collision or enemy snake
     if (
       head.x < 0 || head.y < 0 ||
       head.x >= this.cols || head.y >= this.rows ||
-      this.snake.some(seg => seg.x === head.x && seg.y === head.y)
+      this.snake.some(seg => seg.x === head.x && seg.y === head.y) ||
+      this.enemySnakes.some(ai => ai.body.some(seg => seg.x === head.x && seg.y === head.y))
     ) {
       this.endGame();
       return;
@@ -148,6 +173,14 @@ export class PlayComponent implements OnInit {
       this.spawnFood();
     } else {
       this.snake.pop();
+    }
+
+    // AI SNAKES
+    if (this.gameManager.getMode() === this.gameManager.Mode.PvE) {
+      for (const ai of this.enemySnakes) {
+        ai.direction = this.getAIDirection(ai);
+        this.moveAISnake(ai);
+      }
     }
   }
 
@@ -222,6 +255,19 @@ export class PlayComponent implements OnInit {
       this.tileSize,
       this.tileSize
     );
+
+    // Draw enemy snakes
+    for (const ai of this.enemySnakes) {
+      this.crc.fillStyle = ai.color;
+      for (const segment of ai.body) {
+        this.crc.fillRect(
+          segment.x * this.tileSize,
+          segment.y * this.tileSize,
+          this.tileSize,
+          this.tileSize
+        );
+      }
+    }
   }
 
   spawnFood() {
@@ -292,6 +338,95 @@ export class PlayComponent implements OnInit {
   resumeGameLoop() {
     this.intervalId ??= setInterval(() => this.gameLoop(), this.getSpeed());
   }
+
+  private getAIDirection(ai: AISnake): Direction {
+    const head = ai.body[0];
+    const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
+
+    // Occasionally go towards food (30% of the time)
+    const goForFood = Math.random() < 0.3;
+    if (goForFood) {
+      const dx = this.food.x - head.x;
+      const dy = this.food.y - head.y;
+
+      const preferred: Direction[] = [];
+      if (Math.abs(dx) > Math.abs(dy)) {
+        preferred.push(dx > 0 ? Direction.Right : Direction.Left);
+        preferred.push(dy > 0 ? Direction.Down : Direction.Up);
+      } else {
+        preferred.push(dy > 0 ? Direction.Down : Direction.Up);
+        preferred.push(dx > 0 ? Direction.Right : Direction.Left);
+      }
+
+      // Try preferred directions first
+      for (const dir of preferred) {
+        if (this.isSafeDirection(ai, dir)) return dir;
+      }
+    }
+
+    // Otherwise, pick a random safe direction
+    const shuffled = directions.sort(() => 0.5 - Math.random());
+    for (const dir of shuffled) {
+      if (this.isSafeDirection(ai, dir)) return dir;
+    }
+
+    // No safe options? YOLO in current direction
+    return ai.direction;
+  }
+
+  private isSafeDirection(ai: AISnake, direction: Direction): boolean {
+    const head = ai.body[0];
+    const next = { x: head.x, y: head.y };
+
+    switch (direction) {
+      case Direction.Up: next.y--; break;
+      case Direction.Down: next.y++; break;
+      case Direction.Left: next.x--; break;
+      case Direction.Right: next.x++; break;
+    }
+
+    const wallHit = next.x < 0 || next.y < 0 || next.x >= this.cols || next.y >= this.rows;
+    if (wallHit) return false;
+
+    const bodyHit = ai.body.some(seg => seg.x === next.x && seg.y === next.y);
+    if (bodyHit) return false;
+
+    return true;
+  }
+
+  private moveAISnake(ai: AISnake) {
+    const head = { ...ai.body[0] };
+
+    switch (ai.direction) {
+      case Direction.Up: head.y--; break;
+      case Direction.Down: head.y++; break;
+      case Direction.Left: head.x--; break;
+      case Direction.Right: head.x++; break;
+    }
+
+    if (
+      head.x < 0 || head.y < 0 ||
+      head.x >= this.cols || head.y >= this.rows ||
+      ai.body.some(seg => seg.x === head.x && seg.y === head.y) ||
+      this.snake.some(seg => seg.x === head.x && seg.y === head.y)
+    ) {
+      // Kill the snake by removing it
+      this.enemySnakes = this.enemySnakes.filter(s => s !== ai);
+      return;
+    }
+
+    ai.body.unshift(head);
+
+    // 🍎 AI eats food
+    if (head.x === this.food.x && head.y === this.food.y) {
+      this.spawnFood();
+      // AI grows: don't remove tail
+    } else {
+      ai.body.pop(); // Normal move: remove tail
+    }
+  }
+
+
 
 
 }

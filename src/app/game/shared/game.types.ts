@@ -36,3 +36,9 @@ export interface ScoreEntry {
   difficulty: string;
   date: string;  
 }
+
+export interface AISnake {
+  body: { x: number, y: number }[];
+  direction: Direction;
+  color: string;
+}
