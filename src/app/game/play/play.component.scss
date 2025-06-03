@@ -1,14 +1,30 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; 
+    height: 100%;
+    width: 100%;
+
+    display: block;
+    background-color: #000;
+    color: #fff;
+}
+
 .game-container {
-    width: 100vw;
-    height: 100vh;
+    width: 98vw;
+    height: 98vh;
     display: flex;
     justify-content: center;
     align-items: center;
+    flex-direction: column;
+    color: #4caf50;
+    font-family: 'Courier New', Courier, monospace; 
 
     .game-canvas {
         display: block;
         margin: 0 auto;
         background-color: #111;
         border: 2px solid #4caf50;
+        box-sizing: border-box;
     }
 }

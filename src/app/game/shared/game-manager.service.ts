@@ -1,11 +1,13 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { Difficulty, GameState, Mode } from './game.types';
+import { Difficulty, GameState, Mode, ScoreEntry } from './game.types';
 
 @Injectable({
   providedIn: 'root',
 })
 export class GameManagerService {
+  private readonly STORAGE_KEY = 'snakeScoreboard';
+
   private readonly state: GameState = {
     difficulty: Difficulty.Normal,
     mode: Mode.Singleplayer,
@@ -88,5 +90,21 @@ export class GameManagerService {
 
   getState(): GameState {
     return { ...this.state };
+  }
+
+  getScoreboard(): ScoreEntry[] {
+    const stored = localStorage.getItem(this.STORAGE_KEY);
+    if (!stored) return [];
+    try {
+      return JSON.parse(stored) as ScoreEntry[];
+    } catch {
+      return [];
+    }
+  }
+
+  addScoreEntry(entry: ScoreEntry) {
+    const scoreboard = this.getScoreboard();
+    scoreboard.push(entry);
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(scoreboard));
   }
 }

@@ -1,1 +1,21 @@
-<p>over works!</p>
+<div class="game-over-container">
+    <h1>Game Over</h1>
+    <p>Score: {{ gameManager.getScore() }}</p>
+    <p>Time Played: {{ gameManager.getTimePlayed() / 1000 }} seconds</p>
+    <p>Difficulty: {{ gameManager.getDifficulty() }}</p>
+    
+    <p style="margin-top: 3rem;">Press SPACE to Play Again</p>
+    <button (click)="playAgain()">Play Again</button>
+    <button (click)="goToMenu()">Back to Menu</button>
+    
+    <h2>Scoreboard</h2>
+    <ul class="scoreboard-list">
+        <li *ngFor="let entry of scoreboard">
+            Score: {{ entry.score }} |
+            Time: {{ entry.timePlayedSeconds }}s |
+            Difficulty: {{ entry.difficulty }} |
+            Date: {{ entry.date | date:'short' }}
+        </li>
+    </ul>
+    <button *ngIf="!scorePublished" (click)="publishScore()">Publish Current Score</button>
+</div>

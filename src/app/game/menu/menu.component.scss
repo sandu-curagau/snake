@@ -3,11 +3,12 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100dvh;
+    height: 98vh;
     background-color: #0a0a0a;
-    color: #fff;
+    color: #4caf50;
+    font-family: 'Courier New', Courier, monospace;
     text-align: center;
-    gap: 2rem;
+    gap: 1rem;
 
     h1 {
         font-size: 4rem;
@@ -15,18 +16,19 @@
     }
 
     button {
-        padding: 1rem 2rem;
-        font-size: 1.2rem;
-        cursor: pointer;
-        background: #4caf50;
+        min-width: 5rem;
+        margin: 0.5rem;
+        padding: 0.7rem 1.5rem;
+        font-size: 1rem;
+        background-color: #4caf50;
         border: none;
-        border-radius: 0.5rem;
-        color: white;
-        transition: background 0.2s;
-        width: 170px;
+        color: black;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.3s ease;
 
         &:hover {
-            background: #24a82a;
+            background-color: #388e3c;
         }
 
         &.selected {
@@ -50,6 +52,5 @@
 
     .instructions {
         font-size: 1rem;
-        max-width: 400px;
     }
 }

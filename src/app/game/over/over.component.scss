@@ -1,0 +1,67 @@
+.game-over-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #000;
+  color: #4caf50;
+  font-family: 'Courier New', Courier, monospace;
+
+  h1 {
+    margin-bottom: 1rem;
+  }
+
+  p {
+    font-size: 1.2rem;
+    margin: 0.3rem 0;
+  }
+
+  button {
+    margin: 1rem;
+    padding: 0.7rem 1.5rem;
+    font-size: 1rem;
+    background-color: #4caf50;
+    border: none;
+    color: black;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+
+    &:hover {
+      background-color: #388e3c;
+    }
+  }
+
+.scoreboard-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  
+  /* Scrollbar styling */
+  scrollbar-width: thin;           /* Firefox */
+  scrollbar-color: #00ff00 #000;  /* Firefox: thumb color, track color */
+}
+
+/* WebKit browsers (Chrome, Safari, Edge) */
+.scoreboard-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scoreboard-list::-webkit-scrollbar-track {
+  background: #000000; /* black background track */
+}
+
+.scoreboard-list::-webkit-scrollbar-thumb {
+  background-color: #00ff00; /* bright green thumb */
+  border-radius: 4px;
+  border: 2px solid #000000; /* border around thumb to separate from track */
+}
+
+.scoreboard-list::-webkit-scrollbar-thumb:hover {
+  background-color: #33ff33; /* lighter green on hover */
+}
+
+}
