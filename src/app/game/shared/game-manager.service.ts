@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { Difficulty, GameState, Mode, ScoreEntry } from './game.types';
+import { Difficulty, GameState, Mode, ScoreEntry, Style } from './game.types';
 
 @Injectable({
   providedIn: 'root',
@@ -11,6 +11,7 @@ export class GameManagerService {
   private readonly state: GameState = {
     difficulty: Difficulty.Normal,
     mode: Mode.Singleplayer,
+    style: Style.Classic,
     score: 0,
     timePlayedMs: 0,
     isGameOver: false,
@@ -18,6 +19,7 @@ export class GameManagerService {
   
   difficulty$ = new BehaviorSubject<Difficulty>(Difficulty.Normal);
   mode$ = new BehaviorSubject<Mode>(Mode.Singleplayer);
+  style$ = new BehaviorSubject<Style>(Style.Classic);
   enemyCount$ = new BehaviorSubject<number>(1);
 
   readonly maxEnemyCount = 5;
@@ -26,6 +28,8 @@ export class GameManagerService {
   readonly difficulties = Object.values(Difficulty);
   readonly Mode = Mode;
   readonly modes = Object.values(Mode);
+  readonly Style = Style;
+  readonly styles = Object.values(Style);
 
   setDifficulty(diff: Difficulty) {
     this.difficulty$.next(diff);
@@ -43,6 +47,14 @@ export class GameManagerService {
     return this.mode$.getValue();
   }
 
+  setStyle(style: Style) {
+    this.style$.next(style);
+  }
+
+  getStyle(): Style {
+    return this.style$.getValue();
+  }
+
   setEnemyCount(count: number) {
     if (count >= 1 && count <= this.maxEnemyCount) {
       this.enemyCount$.next(count);
@@ -56,7 +68,6 @@ export class GameManagerService {
   getMaxEnemyCount(): number[] {
     return Array.from({ length: this.maxEnemyCount }, (_, i) => i + 1);
   }
-
 
   resetGame() {
     this.state.score = 0;

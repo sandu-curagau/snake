@@ -11,7 +11,6 @@ import { AISnake, Direction, Point, ScoreEntry } from '../shared/game.types';
   styleUrl: './play.component.scss'
 })
 export class PlayComponent implements OnInit {
-  gameStarted = false;
   isPaused = false;
 
   @ViewChild('gameCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
@@ -26,10 +25,9 @@ export class PlayComponent implements OnInit {
   private snake: { x: number, y: number }[] = [];
   private direction: Direction = Direction.Right;
   private nextDirection: Direction = Direction.Right;
-  private food!: { x: number, y: number };
+  private food: { x: number, y: number }[] = [];
   private intervalId: any;
-  startTime: any;
-
+  private startTime: any;
   private enemySnakes: AISnake[] = [];
 
   constructor(public gameManager: GameManagerService, private router: Router) {
@@ -65,31 +63,6 @@ export class PlayComponent implements OnInit {
     canvas.height = this.rows * this.tileSize;
   }
 
-  setupEnemySnakes() {
-    if (this.gameManager.getMode() === this.gameManager.Mode.PvE) {
-      for (let i = 0; i < this.gameManager.getEnemyCount(); i++) {
-        let spawnPos;
-        do {
-          spawnPos = {
-            x: Math.floor(Math.random() * this.cols),
-            y: Math.floor(Math.random() * this.rows),
-          };
-        } while (this.distance(spawnPos, this.snake[0]) < 8); // 8 tiles min distance
-
-        const aiSnake: AISnake = {
-          body: [spawnPos],
-          direction: Direction.Left,
-          color: 'orange',
-        };
-        this.enemySnakes.push(aiSnake);
-      }
-    }
-  }
-
-  distance(a: {x: number, y: number}, b: {x: number, y: number}): number {
-    return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
-  }
-
   startGame() {
     this.initGame();
     this.setupEnemySnakes();
@@ -97,7 +70,6 @@ export class PlayComponent implements OnInit {
 
     const listener = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
-        this.gameStarted = true;
         this.startTime = Date.now();
         this.intervalId = setInterval(() => this.gameLoop(), this.getSpeed());
         window.removeEventListener('keydown', listener);
@@ -111,7 +83,48 @@ export class PlayComponent implements OnInit {
     this.snake = [{ x: 5, y: 5 }];
     this.direction = Direction.Right;
     this.nextDirection = Direction.Right;
-    this.spawnFood();
+    
+    // initial food
+    for (let i = 0; i < 1 + this.gameManager.getEnemyCount(); i++) {
+      this.spawnFood();
+    }
+  }
+
+  setupEnemySnakes() {
+    if (this.gameManager.getMode() === this.gameManager.Mode.PvE) {
+      for (let i = 0; i < this.gameManager.getEnemyCount(); i++) {
+        this.spawnEnemySnake();
+      }
+    }
+  }
+
+  spawnEnemySnake() {
+    let spawnPos;
+    do {
+      spawnPos = {
+        x: Math.floor(Math.random() * this.cols),
+        y: Math.floor(Math.random() * this.rows),
+      };
+    } while (this.distance(spawnPos, this.snake[0]) < 8);
+
+    const aiSnake: AISnake = {
+      body: [spawnPos],
+      direction: Direction.Left,
+      color: this.getRandomOrangeColor(),
+    };
+
+    this.enemySnakes.push(aiSnake);
+  }
+
+  distance(a: {x: number, y: number}, b: {x: number, y: number}): number {
+    return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+  }
+
+  getRandomOrangeColor(): string {
+    const hue = 30 + Math.random() * 20;
+    const saturation = 90 + Math.random() * 10;
+    const lightness = 45 + Math.random() * 10;
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   }
 
   drawOverlayScreen(text: string) {
@@ -128,6 +141,11 @@ export class PlayComponent implements OnInit {
     );
   }
 
+  gameLoop() {
+    this.update();
+    this.draw();
+  }
+
   getSpeed(): number {
     const difficulty = this.gameManager.getDifficulty();
     switch (difficulty) {
@@ -137,11 +155,6 @@ export class PlayComponent implements OnInit {
       case this.gameManager.Difficulty.Impossible: return 50;
       default: return 150;
     }
-  }
-
-  gameLoop() {
-    this.update();
-    this.draw();
   }
 
   update() {
@@ -155,7 +168,7 @@ export class PlayComponent implements OnInit {
       case Direction.Right: head.x++; break;
     }
 
-    // Wall or self-collision or enemy snake
+    // Wall or self or enemy snake
     if (
       head.x < 0 || head.y < 0 ||
       head.x >= this.cols || head.y >= this.rows ||
@@ -168,9 +181,12 @@ export class PlayComponent implements OnInit {
 
     this.snake.unshift(head);
 
-    if (head.x === this.food.x && head.y === this.food.y) {
+    const foodIndex = this.food.findIndex(f => f.x === head.x && f.y === head.y);
+
+    if (foodIndex !== -1) {
+      this.food.splice(foodIndex, 1); // remove eaten food
       this.gameManager.setScore(this.gameManager.getScore() + 1);
-      this.spawnFood();
+      this.spawnFood(); // respawn to maintain the count
     } else {
       this.snake.pop();
     }
@@ -189,11 +205,12 @@ export class PlayComponent implements OnInit {
     this.crc.fillStyle = 'black';
     this.crc.fillRect(0, 0, this.cols * this.tileSize, this.rows * this.tileSize);
 
-    // Draw snake with gradient segments
+    // Draw snake
     for (let i = 0; i < this.snake.length; i++) {
       const segment = this.snake[i];
       const isHead = i === 0;
 
+      // for example snake { x: 3, y: 2 } becomes { x: 60, y: 40 } pixels
       const x = segment.x * this.tileSize;
       const y = segment.y * this.tileSize;
 
@@ -209,7 +226,7 @@ export class PlayComponent implements OnInit {
       this.crc.fillStyle = gradient;
       this.crc.fillRect(x, y, this.tileSize, this.tileSize);
 
-      // 🧿 Add eyes to the head
+      // scuffy stuff for the eyes 
       if (isHead) {
         const eyeRadius = this.tileSize * 0.1;
         const spacing = this.tileSize * 0.25;
@@ -247,36 +264,114 @@ export class PlayComponent implements OnInit {
       }
     }
 
-    // Draw food
-    this.crc.fillStyle = 'red';
-    this.crc.fillRect(
-      this.food.x * this.tileSize,
-      this.food.y * this.tileSize,
-      this.tileSize,
-      this.tileSize
-    );
+    // food
+    for (const f of this.food) {
+      this.crc.fillStyle = 'red';
+      this.crc.fillRect(
+        f.x * this.tileSize,
+        f.y * this.tileSize,
+        this.tileSize,
+        this.tileSize
+      );
+    }
 
-    // Draw enemy snakes
+    // draw enemy snakes
     for (const ai of this.enemySnakes) {
-      this.crc.fillStyle = ai.color;
-      for (const segment of ai.body) {
-        this.crc.fillRect(
-          segment.x * this.tileSize,
-          segment.y * this.tileSize,
-          this.tileSize,
-          this.tileSize
-        );
+      for (let i = 0; i < ai.body.length; i++) {
+        const segment = ai.body[i];
+        const isHead = i === 0;
+
+        const x = segment.x * this.tileSize;
+        const y = segment.y * this.tileSize;
+
+        const gradient = this.crc.createLinearGradient(x, y, x + this.tileSize, y + this.tileSize);
+
+        if (isHead) {
+          gradient.addColorStop(0, ai.color);
+          gradient.addColorStop(1, '#ffaa00');
+        } else {
+          gradient.addColorStop(0, ai.color);
+          gradient.addColorStop(1, '#663300'); 
+        }
+
+        this.crc.fillStyle = gradient;
+        this.crc.fillRect(x, y, this.tileSize, this.tileSize);
+
+        this.crc.lineWidth = 0.5;
+        this.crc.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        this.crc.strokeRect(x + 0.25, y + 0.25, this.tileSize - 0.5, this.tileSize - 0.5);
+
+        // draws an angry face on the enemies
+        if (isHead) {
+          const centerX = x + this.tileSize / 2;
+          const centerY = y + this.tileSize / 2;
+          const eyeOffsetX = this.tileSize * 0.15;
+          const eyeOffsetY = this.tileSize * 0.2;
+          const eyeRadius = this.tileSize * 0.07;
+
+          this.crc.fillStyle = 'white';
+          this.crc.strokeStyle = 'black';
+          this.crc.lineWidth = 1.5;
+
+          // Left eye
+          this.crc.beginPath();
+          this.crc.ellipse(centerX - eyeOffsetX, centerY - eyeOffsetY, eyeRadius * 1.5, eyeRadius, Math.PI / 6, 0, Math.PI * 2);
+          this.crc.fill();
+          this.crc.stroke();
+
+          // Right eye
+          this.crc.beginPath();
+          this.crc.ellipse(centerX + eyeOffsetX, centerY - eyeOffsetY, eyeRadius * 1.5, eyeRadius, -Math.PI / 6, 0, Math.PI * 2);
+          this.crc.fill();
+          this.crc.stroke();
+
+          // eyebrows (lines)
+          this.crc.strokeStyle = 'black';
+          this.crc.lineWidth = 2;
+
+          // Left brow (angled down)
+          this.crc.beginPath();
+          this.crc.moveTo(centerX - eyeOffsetX - eyeRadius, centerY - eyeOffsetY - eyeRadius * 1.2);
+          this.crc.lineTo(centerX - eyeOffsetX + eyeRadius, centerY - eyeOffsetY - eyeRadius * 0.5);
+          this.crc.stroke();
+
+          // Right brow (angled down)
+          this.crc.beginPath();
+          this.crc.moveTo(centerX + eyeOffsetX + eyeRadius, centerY - eyeOffsetY - eyeRadius * 1.2);
+          this.crc.lineTo(centerX + eyeOffsetX - eyeRadius, centerY - eyeOffsetY - eyeRadius * 0.5);
+          this.crc.stroke();
+
+          // mouth (downward curve)
+          this.crc.beginPath();
+          this.crc.lineWidth = 2;
+          this.crc.strokeStyle = 'black';
+          const mouthWidth = this.tileSize * 0.3;
+          const mouthHeight = this.tileSize * 0.15;
+          this.crc.moveTo(centerX - mouthWidth / 2, centerY + mouthHeight / 2);
+          this.crc.quadraticCurveTo(centerX, centerY + mouthHeight, centerX + mouthWidth / 2, centerY + mouthHeight / 2);
+          this.crc.stroke();
+        }
       }
     }
   }
 
-  spawnFood() {
+  private spawnFood() {
+    const isOccupied = (x: number, y: number): boolean => {
+      const overlapsSnake = this.snake.some(segment => segment.x === x && segment.y === y);
+      const overlapsEnemy = this.enemySnakes.some(ai =>
+        ai.body.some(segment => segment.x === x && segment.y === y)
+      );
+      const overlapsFood = this.food.some(f => f.x === x && f.y === y);
+      return overlapsSnake || overlapsEnemy || overlapsFood;
+    };
+
     let x: number, y: number;
     do {
       x = Math.floor(Math.random() * this.cols);
       y = Math.floor(Math.random() * this.rows);
-    } while (this.snake.some(s => s.x === x && s.y === y));
-    this.food = { x, y };
+    } while (isOccupied(x, y));
+
+    this.food.push({ x, y });
   }
 
   endGame() {
@@ -285,20 +380,20 @@ export class PlayComponent implements OnInit {
 
     this.gameManager.setTimePlayed(Date.now() - this.startTime);
 
-    this.router.navigate(['/game-over']); // Angular routing, no reload
+    this.router.navigate(['/game-over']); 
   }
 
   @HostListener('window:keydown', ['$event'])
   handleKey(e: KeyboardEvent) {
-    const key = e.key;
+    const key = e.key.toLowerCase();
 
     // Pause toggle with P
-    if (key === 'p' || key === 'P') {
+    if (key === 'p') {
       this.togglePause();
       return;
     }
 
-    // If paused, ignore movement input
+    // if paused, ignore movement input
     if (this.isPaused) return;
 
     const opposite: Record<Direction, Direction> = {
@@ -309,10 +404,17 @@ export class PlayComponent implements OnInit {
     };
 
     const keyToDirection: Record<string, Direction> = {
-      ArrowUp: Direction.Up,
-      ArrowDown: Direction.Down,
-      ArrowLeft: Direction.Left,
-      ArrowRight: Direction.Right,
+      arrowup: Direction.Up,
+      w: Direction.Up,
+
+      arrowdown: Direction.Down,
+      s: Direction.Down,
+
+      arrowleft: Direction.Left,
+      a: Direction.Left,
+
+      arrowright: Direction.Right,
+      d: Direction.Right,
     };
 
     if (key in keyToDirection) {
@@ -343,11 +445,22 @@ export class PlayComponent implements OnInit {
     const head = ai.body[0];
     const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
 
-    // Occasionally go towards food (30% of the time)
-    const goForFood = Math.random() < 0.3;
-    if (goForFood) {
-      const dx = this.food.x - head.x;
-      const dy = this.food.y - head.y;
+    // sometimes go towards food (50% rn)
+    const goForFood = Math.random() < 0.5;
+    if (goForFood && this.food.length > 0) {
+      // Find closest food
+      let closest = this.food[0];
+      let minDist = this.distance(head, closest);
+      for (const f of this.food) {
+        const dist = this.distance(head, f);
+        if (dist < minDist) {
+          closest = f;
+          minDist = dist;
+        }
+      }
+
+      const dx = closest.x - head.x;
+      const dy = closest.y - head.y;
 
       const preferred: Direction[] = [];
       if (Math.abs(dx) > Math.abs(dy)) {
@@ -358,20 +471,18 @@ export class PlayComponent implements OnInit {
         preferred.push(dx > 0 ? Direction.Right : Direction.Left);
       }
 
-      // Try preferred directions first
       for (const dir of preferred) {
         if (this.isSafeDirection(ai, dir)) return dir;
       }
     }
 
-    // Otherwise, pick a random safe direction
-    const shuffled = directions.sort(() => 0.5 - Math.random());
+    // otherwise pick a random safe direction
+    const shuffled = directions.sort(() => Math.random() - 0.5);
     for (const dir of shuffled) {
       if (this.isSafeDirection(ai, dir)) return dir;
     }
 
-    // No safe options? YOLO in current direction
-    return ai.direction;
+    return ai.direction; // yolo
   }
 
   private isSafeDirection(ai: AISnake, direction: Direction): boolean {
@@ -410,23 +521,27 @@ export class PlayComponent implements OnInit {
       ai.body.some(seg => seg.x === head.x && seg.y === head.y) ||
       this.snake.some(seg => seg.x === head.x && seg.y === head.y)
     ) {
-      // Kill the snake by removing it
+      // kill the snake by removing it
       this.enemySnakes = this.enemySnakes.filter(s => s !== ai);
+
+        // 🆕 respawn if Endless style
+      if (this.gameManager.getStyle() === this.gameManager.Style.Endless) {
+        this.spawnEnemySnake();
+      }
       return;
     }
 
     ai.body.unshift(head);
 
-    // 🍎 AI eats food
-    if (head.x === this.food.x && head.y === this.food.y) {
+    // eats food
+    const foodIndex = this.food.findIndex(f => f.x === head.x && f.y === head.y);
+
+    if (foodIndex !== -1) {
+      this.food.splice(foodIndex, 1); // remove eaten food
       this.spawnFood();
-      // AI grows: don't remove tail
     } else {
-      ai.body.pop(); // Normal move: remove tail
+      ai.body.pop();
     }
   }
-
-
-
 
 }

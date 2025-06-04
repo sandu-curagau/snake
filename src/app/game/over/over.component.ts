@@ -40,6 +40,7 @@ export class OverComponent implements OnInit {
     this.scorePublished = true;
 
     const entry: ScoreEntry = {
+      mode: this.gameManager.getMode(),
       score: this.gameManager.getScore(),
       timePlayedSeconds: Math.floor(this.gameManager.getTimePlayed() / 1000),
       difficulty: this.gameManager.getDifficulty(),

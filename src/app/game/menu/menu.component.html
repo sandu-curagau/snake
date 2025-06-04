@@ -44,6 +44,22 @@
             </p>
         </div>
 
+        <div *ngIf="(gameManager.mode$ | async) === gameManager.Mode.PvE" class="feature-container">
+            <h3>Game Style</h3>
+            <div class="buttons-container">
+                <button
+                *ngFor="let style of gameManager.styles"
+                [class.selected]="(gameManager.style$ | async) === style"
+                (click)="gameManager.setStyle(style)"
+                >
+                {{ style }}
+                </button>
+            </div>
+            <p class="instructions">
+                Endless mode respawns a new enemy snake when one dies.
+            </p>
+        </div>
+
     </div>
 
     <div class="instructions">

@@ -10,9 +10,15 @@ export enum Mode {
   PvE = 'PvE',
 }
 
+export enum Style {
+  Classic = 'Classic',
+  Endless = 'Endless',
+}
+
 export interface GameState {
   difficulty: Difficulty;
   mode: Mode;
+  style: Style;
   score: number;
   timePlayedMs: number;
   isGameOver: boolean;
@@ -31,6 +37,7 @@ export interface Point {
 }
 
 export interface ScoreEntry {
+  mode: Mode;
   score: number;
   timePlayedSeconds: number;
   difficulty: string;
@@ -41,4 +48,5 @@ export interface AISnake {
   body: { x: number, y: number }[];
   direction: Direction;
   color: string;
+  lastHeadPos?: { x: number; y: number };
 }
